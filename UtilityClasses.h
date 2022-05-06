@@ -1953,9 +1953,9 @@ class MappingSlider
 public:
 	Label* nameLabel;
 	Slider* sliderControl;
-	float minBound = 0;
-	float maxBound = 1;
-	float mapVal = 0;
+	float* minBound;
+	float* maxBound;
+	float* mapVal = 0;
 
 	MappingSlider(String name, float minVal, float maxVal)
 	{
@@ -1963,6 +1963,9 @@ public:
 		nameLabel->setText(name, dontSendNotification);
 		nameLabel->setJustificationType(Justification::centred);
 
+		mapVal = new float(0);
+		minBound = new float(minVal);
+		maxBound = new float(maxVal);
 		sliderControl = new Slider;
 		sliderControl->setSliderStyle(Slider::SliderStyle::LinearVertical);
 		sliderControl->setRange(0, 1);
@@ -1972,7 +1975,7 @@ public:
 		sliderControl->setTextBoxStyle(Slider::NoTextBox,true,0,0);
 		sliderControl->onValueChange = [this]
 		{
-			mapVal = minBound + sliderControl->getValue() * (maxBound - minBound);
+			*mapVal = *minBound + sliderControl->getValue() * (*maxBound - *minBound);
 		};
 	}
 

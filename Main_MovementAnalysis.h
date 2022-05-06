@@ -24,6 +24,10 @@ public:
 	// Mapping Sliders
 	std::vector<MappingSlider> mappingSliders;
 
+	// Master Fader
+	float masterGain_dB = 0;
+	Slider* masterGain;
+
 	// Meters
 	Norm_Denorm_Metering* energyMeter;
 	Norm_Denorm_Metering* masterLevel;	
@@ -60,14 +64,25 @@ public:
 		MiscControl = new UI_ControlGroup("Movement", Colours::green);
 
 		// CREATE MAPPING SLIDERS
-		MappingSlider* sliderPtr = new MappingSlider("Control 1", 0, 100);
+		MappingSlider* sliderPtr = new MappingSlider("Control 1", 0, 0.5);
 		mappingSliders.push_back(*sliderPtr);
-		sliderPtr = new MappingSlider("Control 2", 0, 100);
+		sliderPtr = new MappingSlider("Control 2", 0, 1200);
 		mappingSliders.push_back(*sliderPtr);
 		sliderPtr = new MappingSlider("Control 3", 0, 100);
 		mappingSliders.push_back(*sliderPtr);
-		sliderPtr = new MappingSlider("Control 4", 0, 100);
+		sliderPtr = new MappingSlider("Control 4", 0, 0.5);
 		mappingSliders.push_back(*sliderPtr);
+
+		// Master Gain
+		masterGain = new Slider;
+		masterGain->setRange(-40, 0);
+		masterGain->setColour(masterGain->backgroundColourId, Colours::blue);
+		masterGain->setColour(masterGain->trackColourId, Colours::yellow);
+		masterGain->setTextBoxStyle(Slider::NoTextBox,true,0,0);
+		masterGain->onValueChange = [this]
+		{
+			masterGain_dB = masterGain->getValue();
+		};
 
 		// CREATE VIDEO COMPONENT
 		movVideoPlayer = new VideoComponent(true);
@@ -142,6 +157,7 @@ public:
 		// METERS
 		energyMeter->setVisible(on);
 		masterLevel->setVisible(on);
+		masterGain->setVisible(on);
 
 		for (MappingSlider& iter : mappingSliders)			iter.setVisible(on);
 ;	}
@@ -154,6 +170,9 @@ public:
 			initialize_sensorIdx_bodyPart(sensObj);
 			is_First_Callback_Complete = true;
 		}
+
+		masterLevel->updateMeter();
+		energyMeter->updateMeter();
 
 		updateVisualizers(sensObj);
 	}
@@ -168,6 +187,10 @@ public:
 		MasterControl->getBoundingRec(wd, ht, 0.6, 0.73, 0.33, 0.09);
 
 		VideoControl->memberComponent_setBounds(movVideoPlayer, 0.05, 0.05, 0.9, 0.75);
+
+		energyMeter->setLayout(EnergyVis, 0, 0.25, 1, 0.9);
+		masterLevel->setLayout(MasterControl, 0.5, 0.25, 0.45, 0.9);
+		MasterControl->memberComponent_setBounds(masterGain, 0.1, 0.25, 0.35, 0.5);
 
 		int numMappingSliders = mappingSliders.size();
 		float gap_Sliders_Horiz = 0.9 / (float)numMappingSliders;

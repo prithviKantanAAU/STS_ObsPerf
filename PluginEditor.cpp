@@ -142,6 +142,7 @@ void STS_ObsPerfAudioProcessorEditor::addAllElements_MOV()
     addAndMakeVisible(ptr_MOV->energyMeter->meter_Full);
     addAndMakeVisible(ptr_MOV->masterLevel->meter_Empty);
     addAndMakeVisible(ptr_MOV->masterLevel->meter_Full);
+    addAndMakeVisible(ptr_MOV->masterGain);
 
     for (MappingSlider& iter : ptr_MOV->mappingSliders)
     {

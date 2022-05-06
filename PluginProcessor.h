@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "Main_Sensors.h"
+#include "energyTest.h"
 #include "Main_MovementAnalysis.h"
 
 using namespace juce;
@@ -41,7 +42,7 @@ public:
 
 	void startMusicDSP()
 	{
-		/*fDSP = new mydsp();
+		fDSP = new mydsp();
 		fDSP->init(getSampleRate());
 		fUI = new MapUI();
 		fDSP->buildUserInterface(fUI);
@@ -51,12 +52,11 @@ public:
 		}
 		isDSP_ON = true;
 		isReady = true;
-		set_masterGain(main_Aud.mixerSettings.masterGain);*/
 	}
 
 	void stopMusicDSP()
 	{
-		/*if (isDSP_ON)
+		if (isDSP_ON)
 		{
 			isReady = false;
 			isDSP_ON = false;
@@ -66,7 +66,7 @@ public:
 				delete[] outputs[channel];
 			}
 			delete[] outputs;
-		}*/
+		}
 	}
 
 	void set_masterGain(float faderVal)
@@ -77,14 +77,21 @@ public:
 
 	void mapToFAUST()
 	{
-		
+		fUI->setParamValue("SUBPARAM_blowPressure", *main_Mov.mappingSliders.at(0).mapVal);
+		fUI->setParamValue("SUBPARAM_freq_Hz", *main_Mov.mappingSliders.at(1).mapVal);
+		fUI->setParamValue("SUBPARAM_breathgain", *main_Mov.mappingSliders.at(2).mapVal);
+		fUI->setParamValue("SUBPARAM_drive", *main_Mov.mappingSliders.at(3).mapVal);
+
+		main_Mov.energyMeter->processInput(abs(sin(cyclesDone * 0.004)));
+		fUI->setParamValue("energy", abs(sin(cyclesDone*0.004)));		
+		fUI->setParamValue("MasterGain", main_Mov.masterGain_dB);
 	}
 
 private:
 
-	/*MapUI* fUI;
+	MapUI* fUI;
 	dsp* fDSP;
-	float** outputs;*/
+	float** outputs;
 	int timer_Interval_MS = 10;
 	void hiResTimerCallback();
 	double timeDone = 0;

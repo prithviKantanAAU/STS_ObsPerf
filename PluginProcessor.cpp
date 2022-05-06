@@ -99,7 +99,7 @@ void STS_ObsPerfAudioProcessor::changeProgramName (int index, const juce::String
 
 void STS_ObsPerfAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    /*fDSP = new mydsp();
+    fDSP = new mydsp();
     fDSP->init(sampleRate);
     fUI = new MapUI();
     fDSP->buildUserInterface(fUI);
@@ -108,13 +108,13 @@ void STS_ObsPerfAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
         outputs[channel] = new float[samplesPerBlock];
     }
     main_Sens.fs_AUDIO = getSampleRate();
-    isReady = true;*/
+    isReady = true;
 }
 
 void STS_ObsPerfAudioProcessor::releaseResources()
 {
-    /*if (isDSP_ON)
-        stopMusicDSP();*/
+    if (isDSP_ON)
+        stopMusicDSP();
 }
 
 
@@ -146,27 +146,27 @@ void STS_ObsPerfAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     auto totalNumInputChannels = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    //if (isReady)
-    //{
-    //    fDSP->compute(buffer.getNumSamples(), NULL, outputs);                           // GET MUSIC FROM FAUST
+    if (isReady)
+    {
+        fDSP->compute(buffer.getNumSamples(), NULL, outputs);                           // GET MUSIC FROM FAUST
 
-    //    for (int channel = 0; channel < totalNumOutputChannels; ++channel) {
-    //        for (int i = 0; i < buffer.getNumSamples(); i++) {
+        for (int channel = 0; channel < totalNumOutputChannels; ++channel) {
+            for (int i = 0; i < buffer.getNumSamples(); i++) {
 
-    //            *buffer.getWritePointer(channel, i) = outputs[channel][i]; //+ outputVoice; // SUM DATA
-    //        }
+                *buffer.getWritePointer(channel, i) = outputs[channel][i]; //+ outputVoice; // SUM DATA
+            }
 
-    //        // GET DB LEVEL FOR METERING
-    //        musicLevel_dB = fmax(-50, Decibels::gainToDecibels(buffer.getMagnitude(0, 0, buffer.getNumSamples())));
-    //        main_Aud.outputLevel->processInput(musicLevel_dB);
-    //    }
+            // GET DB LEVEL FOR METERING
+            musicLevel_dB = fmax(-40, Decibels::gainToDecibels(buffer.getMagnitude(0, 0, buffer.getNumSamples())));
+            main_Mov.masterLevel->processInput(musicLevel_dB);
+        }
 
-    //    if (main_Sens.is_SensorRecording)
-    //    {
-    //        main_Sens.writer->flush();
-    //        main_Sens.writer->writeFromAudioSampleBuffer(buffer, 0, buffer.getNumSamples());
-    //    }
-    //}
+        if (main_Sens.is_SensorRecording)
+        {
+            main_Sens.writer->flush();
+            main_Sens.writer->writeFromAudioSampleBuffer(buffer, 0, buffer.getNumSamples());
+        }
+    }
 }
 
 bool STS_ObsPerfAudioProcessor::hasEditor() const
