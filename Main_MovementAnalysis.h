@@ -2,6 +2,7 @@
 #include <JuceHeader.h>
 #include "UtilityClasses.h"
 #include "Main_Sensors.h"
+#include "OSC_MobileControl.h"
 using namespace juce;
 
 class Main_MovementAnalysis
@@ -12,6 +13,7 @@ public:
 	std::vector <MovementFeature> movementFeatures;
 	std::string mpLog_Format = "%s,\n";
 	unsigned long lines_written = 0;
+	OSC_MobileControl oscControl;
 
 	// Common UI Elements
 	UI_ControlGroup* CoM_Vis;
@@ -130,6 +132,18 @@ public:
 		handleLogging(isSensor_Recording,mpLogFile);
 	}
 
+	void handleExternalController()
+	{
+		for (int i = 0; i < 4; i++)
+		{
+			if (oscControl.message_toHandle[i])
+			{
+				mappingSliders.at(i).sliderControl->setValue(oscControl.oscDataArray[i]);
+				oscControl.message_toHandle[i] = false;
+			}
+		}
+	}
+
 	void updateVisualizerData(Main_Sensors* sensObj)
 	{		
 		
@@ -164,6 +178,8 @@ public:
 
 	void updateElements(Main_Sensors* sensObj)
 	{
+		handleExternalController();
+
 		// PUT FIRST TIME FUNCTIONS HERE
 		if (!is_First_Callback_Complete)
 		{
