@@ -410,207 +410,6 @@ public:
 	float slider_endX = 0;
 };
 
-class GaitEventDetection
-{
-public:
-	
-	// Smooth Gyr Signal
-	BiQuad gyrSmooth_L;
-	BiQuad gyrSmooth_R;
-
-	float Thresh_HS_GyrZ_L = 64;
-	float Thresh_HS_GyrZ_R = 64;
-	int Thresh_HS_Smpls_L = 5;
-	int Thresh_HS_Smpls_R = 5;
-	float Thresh_TO_GyrZ_L = -73;
-	float Thresh_TO_GyrZ_R = -73;
-	float Thresh_MS_Crossing = 150;
-
-	float gyrZ_L_Z1 = 0, gyrZ_L_Z2 = 0, gyrZ_R_Z1 = 0, gyrZ_R_Z2 = 0;
-	int smpls_sinceLast_HS_L = 0, smpls_sinceLast_HS_R = 0;
-
-	// STATES
-	bool isSwing_L = false;
-	bool isSwing_R = false;
-	bool isDblSupport = false;
-	bool isStationary = false;
-	bool isTurning = false;
-
-	// EVENTS
-	bool HS_L = false;
-	bool HS_R = false;
-	bool TO_L = false;
-	bool TO_R = false;
-	bool MS_L = false;
-	bool MS_R = false;
-	bool MS_L_CROSSED = false;
-	bool MS_R_CROSSED = false;
-
-	short lastFootContact = 1;
-
-	GaitEventDetection()
-	{
-		LAB_TO_MS_Thresh = new Label("","TO MS Thresh");
-		LAB_TO_HS_Smpls = new Label("", "TO HS Thresh");
-		LAB_MS_Thresh = new Label("", "Midswing Thresh");
-		Set_Thresh_HS_Smpls_L = new Slider;
-		Set_Thresh_HS_Smpls_R = new Slider;
-		Set_Thresh_MS_Crossing = new Slider;
-		Set_Thresh_TO_HS_L = new MovementRangeSlider(-250, 250);
-		Set_Thresh_TO_HS_R = new MovementRangeSlider(-250, 250);
-
-		Set_Thresh_HS_Smpls_L->setRange(0, 50);
-		Set_Thresh_HS_Smpls_L->setValue(Thresh_HS_Smpls_L);
-		Set_Thresh_HS_Smpls_L->setNumDecimalPlacesToDisplay(0);
-		Set_Thresh_HS_Smpls_L->setColour(Set_Thresh_HS_Smpls_L->trackColourId, Colours::yellow);
-		Set_Thresh_HS_Smpls_L->setColour(Set_Thresh_HS_Smpls_L->backgroundColourId, Colours::blue);
-		Set_Thresh_HS_Smpls_L->onValueChange = [this]
-		{
-			Thresh_HS_Smpls_L = Set_Thresh_HS_Smpls_L->getValue();
-		};
-
-		Set_Thresh_HS_Smpls_R->setRange(0, 50);
-		Set_Thresh_HS_Smpls_R->setValue(Thresh_HS_Smpls_R);
-		Set_Thresh_HS_Smpls_R->setNumDecimalPlacesToDisplay(0);
-		Set_Thresh_HS_Smpls_R->setColour(Set_Thresh_HS_Smpls_R->trackColourId, Colours::yellow);
-		Set_Thresh_HS_Smpls_R->setColour(Set_Thresh_HS_Smpls_R->backgroundColourId, Colours::blue);
-		Set_Thresh_HS_Smpls_R->onValueChange = [this]
-		{
-			Thresh_HS_Smpls_R = Set_Thresh_HS_Smpls_R->getValue();
-		};
-
-		Set_Thresh_MS_Crossing->setRange(0, 200);
-		Set_Thresh_MS_Crossing->setValue(Thresh_MS_Crossing);
-		Set_Thresh_MS_Crossing->setNumDecimalPlacesToDisplay(0);
-		Set_Thresh_MS_Crossing->setColour(Set_Thresh_MS_Crossing->trackColourId, Colours::yellow);
-		Set_Thresh_MS_Crossing->setColour(Set_Thresh_MS_Crossing->backgroundColourId, Colours::blue);
-		Set_Thresh_MS_Crossing->onValueChange = [this]
-		{
-			Thresh_MS_Crossing = Set_Thresh_MS_Crossing->getValue();
-		};
-
-		Set_Thresh_TO_HS_L->range->setMinAndMaxValues(Thresh_TO_GyrZ_L, Thresh_HS_GyrZ_L);
-		Set_Thresh_TO_HS_R->range->setMinAndMaxValues(Thresh_TO_GyrZ_R, Thresh_HS_GyrZ_R);
-
-		gyrSmooth_L.calculateLPFCoeffs(5, 0.7, 100);
-		gyrSmooth_R.calculateLPFCoeffs(5, 0.7, 100);
-	};
-
-	~GaitEventDetection()
-	{};
-
-	void calcFeatures_GaitEvents(float gyrZ_Shank_L, float gyrZ_Shank_R, float pitch_Shank_L, float pitch_Shank_R, bool swng_L, bool swng_R, float gyrY_Trunk)
-	{
-		// LOGIC FOR EVENT DETECTION
-		HS_L = false;
-		HS_R = false;
-		TO_L = false;
-		TO_R = false;
-		MS_L = false;
-		MS_R = false;
-
-		isSwing_L = swng_L;
-		isSwing_R = swng_R;
-
-		Thresh_TO_GyrZ_L = Set_Thresh_TO_HS_L->VAL_bounds[0];
-		Thresh_HS_GyrZ_L = Set_Thresh_TO_HS_L->VAL_bounds[1];
-		Thresh_TO_GyrZ_R = Set_Thresh_TO_HS_R->VAL_bounds[0];
-		Thresh_HS_GyrZ_R = Set_Thresh_TO_HS_R->VAL_bounds[1];
-
-		// DETECT HEEL STRIKE
-		if (isSwing_L && MS_L_CROSSED && (gyrZ_L_Z1 < gyrZ_L_Z2) && (gyrZ_L_Z1 < gyrZ_Shank_L) && (gyrZ_L_Z1 < Thresh_HS_GyrZ_L))
-		{
-			isSwing_L = false;
-			HS_L = true;
-			smpls_sinceLast_HS_L = 0;
-			MS_L_CROSSED = false;
-			lastFootContact = 1;
-		}
-
-		if (isSwing_R && MS_R_CROSSED && (gyrZ_R_Z1 < gyrZ_R_Z2) && (gyrZ_R_Z1 < gyrZ_Shank_R) && (gyrZ_R_Z1 < Thresh_HS_GyrZ_R))
-		{
-			isSwing_R = false;
-			HS_R = true;
-			smpls_sinceLast_HS_R = 0;
-			MS_R_CROSSED = false;
-			lastFootContact = 2;
-		}
-
-		// DETECT TOE OFF
-		if (!isSwing_L && (gyrZ_Shank_L > gyrZ_L_Z1) && (gyrZ_L_Z1 < gyrZ_L_Z2) 
-			&& (gyrZ_L_Z1 < Thresh_TO_GyrZ_L) && (smpls_sinceLast_HS_L >= Thresh_HS_Smpls_L))
-		{
-			isSwing_L = true;
-			TO_L = true;
-		}
-
-		if (!isSwing_R && (gyrZ_Shank_R > gyrZ_R_Z1) && (gyrZ_R_Z1 < gyrZ_R_Z2)
-			&& (gyrZ_R_Z1 < Thresh_TO_GyrZ_R) && (smpls_sinceLast_HS_R >= Thresh_HS_Smpls_R))
-		{
-			isSwing_R = true;
-			TO_R = true;
-		}
-
-		// CHECK IF MS CROSSED
-		if ((gyrZ_Shank_L > Thresh_MS_Crossing) && (gyrZ_L_Z1 <= Thresh_MS_Crossing))
-		{
-			MS_L_CROSSED = true;
-			MS_L = true;
-		}
-
-		if ((gyrZ_Shank_R > Thresh_MS_Crossing) && (gyrZ_R_Z1 <= Thresh_MS_Crossing))
-		{
-			MS_R_CROSSED = true;
-			MS_R = true;
-		}
-
-		// CHECK TURNING
-		// isTurning = (gyrY_Trunk > 100) ? true : false;
-
-		// CHECK STATIONARITY
-		/*bool angleCondition = (abs(pitch_Shank_L) < 10) && (abs(pitch_Shank_R) < 10);
-		bool velCondition = (abs(gyrZ_Shank_L) < 20) && (abs(gyrZ_Shank_R) < 20);
-		isStationary = angleCondition && velCondition;
-		if (isStationary)
-		{
-			isSwing_L = false;
-			isSwing_R = false;
-		}*/
-
-		// UPDATE HS TIMERS
-		if (!isSwing_L) smpls_sinceLast_HS_L++;
-		if (!isSwing_R) smpls_sinceLast_HS_R++;
-
-		// SHUFFLE DELAYS
-		gyrZ_L_Z2 = gyrZ_L_Z1;
-		gyrZ_L_Z1 = gyrZ_Shank_L;
-		gyrZ_R_Z2 = gyrZ_R_Z1;
-		gyrZ_R_Z1 = gyrZ_Shank_R;
-	}
-
-	// UI ELEMENTS
-	Label* LAB_TO_MS_Thresh;
-	Label* LAB_TO_HS_Smpls;
-	Slider* Set_Thresh_HS_Smpls_L;
-	Slider* Set_Thresh_HS_Smpls_R;
-	MovementRangeSlider* Set_Thresh_TO_HS_L;
-	MovementRangeSlider* Set_Thresh_TO_HS_R;
-	Label* LAB_MS_Thresh;
-	Slider* Set_Thresh_MS_Crossing;
-
-	void setVisible(bool on)
-	{
-		LAB_TO_MS_Thresh->setVisible(on);
-		LAB_TO_HS_Smpls->setVisible(on);
-		Set_Thresh_HS_Smpls_L->setVisible(on);
-		Set_Thresh_HS_Smpls_R->setVisible(on);
-		Set_Thresh_TO_HS_L->setVisible(on);
-		Set_Thresh_TO_HS_R->setVisible(on);
-		LAB_MS_Thresh->setVisible(on);
-		Set_Thresh_MS_Crossing->setVisible(on);
-	}	
-};
-
 class SensorLog_Handling 
 {
 public:
@@ -661,10 +460,8 @@ public:
 	String rec_LogPath = "";
 
 	std::vector<String> TR;
-	std::vector<String> TH_L;
-	std::vector<String> TH_R;
-	std::vector<String> SH_L;
-	std::vector<String> SH_R;
+	std::vector<String> TH;
+	std::vector<String> SH;
 	std::vector<long> logSizes;
 	std::vector<String> offsetsVector;
 
@@ -679,10 +476,8 @@ public:
 	void flushAllVectors()
 	{
 		TR.clear();
-		TH_L.clear();
-		TH_R.clear();
-		SH_L.clear();
-		SH_R.clear();
+		TH.clear();
+		SH.clear();
 		numSmpl_NOW = 0;
 		numSmpl_TOT = 100000000;
 	}
@@ -719,10 +514,8 @@ public:
 		}
 
 		TR.clear();
-		TH_L.clear();
-		TH_R.clear();
-		SH_L.clear();
-		SH_R.clear();
+		TH.clear();
+		SH.clear();
 		numSmpl_NOW = 0;
 
 		for (int i = 0; i < 10; i++) logFound[i] = false;
@@ -735,14 +528,10 @@ public:
 
 			if (iter.getFullPathName().contains("Trunk"))
 				fileIdx = 1;
-			if (iter.getFullPathName().contains("Thigh L"))
+			if (iter.getFullPathName().contains("Thigh"))
 				fileIdx = 2;
-			if (iter.getFullPathName().contains("Thigh R"))
+			if (iter.getFullPathName().contains("Shank"))
 				fileIdx = 3;
-			if (iter.getFullPathName().contains("Shank L"))
-				fileIdx = 4;
-			if (iter.getFullPathName().contains("Shank R"))
-				fileIdx = 5;
 
 			if (imuLogStream.openedOk())
 			{
@@ -760,20 +549,12 @@ public:
 						logSizes[0]++;
 						break;
 					case 2:
-						TH_L.push_back(newLine);
+						TH.push_back(newLine);
 						logSizes[1]++;
 						break;
 					case 3:
-						TH_R.push_back(newLine);
+						SH.push_back(newLine);
 						logSizes[2]++;
-						break;
-					case 4:
-						SH_L.push_back(newLine);
-						logSizes[3]++;
-						break;
-					case 5:
-						SH_R.push_back(newLine);
-						logSizes[4]++;
 						break;
 					}
 				}
@@ -807,10 +588,8 @@ public:
 		if (numSmpl_TOT > 1)
 		{
 			if (location == "Trunk" && logFound[0]) out = TR[numSmpl_NOW];
-			if (location == "Thigh L" && logFound[1]) out = TH_L[numSmpl_NOW];
-			if (location == "Thigh R" && logFound[2]) out = TH_R[numSmpl_NOW];
-			if (location == "Shank L" && logFound[3]) out = SH_L[numSmpl_NOW];
-			if (location == "Shank R" && logFound[4]) out = SH_R[numSmpl_NOW];
+			if (location == "Thigh" && logFound[1]) out = TH[numSmpl_NOW];
+			if (location == "Shank" && logFound[2]) out = SH[numSmpl_NOW];
 		}
 		return out;
 	}
@@ -860,550 +639,7 @@ public:
 	}
 };
 
-class Visualizer_Block
-{
-public:
-	Visualizer_Block(int ln, int br, int th, Colour* cl, int index)
-	{
-		length = ln;
-		breadth = br;
-		thickness = th;
-		col = cl;
 
-		sagit = new Label;
-		front = new Label;
-
-		sagit->setColour(sagit->backgroundColourId, *col);
-		sagit->setColour(sagit->outlineColourId, Colours::red);
-		front->setColour(front->backgroundColourId, *col);
-		front->setColour(front->outlineColourId, Colours::red);
-
-		idx = index;
-	}
-
-	~Visualizer_Block()
-	{}
-
-	Label* sagit;
-	Label* front;
-
-	int length = 0;
-	int breadth = 0;
-	int thickness = 0;
-	Colour* col;
-
-	float sagit_X = 0, sagit_Y = 0, front_X = 0, front_Y = 0;
-	int idx;
-
-	void updateXY(int plane, float x, float y)
-	{
-		switch (plane)
-		{
-		case 1:
-			sagit_X = x;
-			sagit_Y = y;
-			break;
-		case 2:
-			front_X = x;
-			front_Y = y;
-			break;
-		}
-	}
-
-	void placeLabel_inUIGroup(UI_ControlGroup* uiGrp, int plane, float x_Rel, float y_Rel, float wd_Rel, float ht_Rel)
-	{
-		Label* toPlace;
-		
-		switch (plane)
-		{
-		case 1: 
-			toPlace = sagit;
-			break;
-		case 2:
-			toPlace = front;
-			break;
-		}
-
-		uiGrp->memberComponent_setBounds(toPlace, x_Rel, y_Rel, wd_Rel, ht_Rel);
-	}
-
-	void updateAlpha(bool isOn)
-	{
-		sagit->setAlpha(isOn ? 1 : 0.3);
-		front->setAlpha(isOn ? 1 : 0.3);
-	}
-
-	void setVisible(bool on)
-	{
-		sagit->setVisible(on);
-		front->setVisible(on);
-	}
-};
-
-class Visualizer_Joint
-{
-public:
-	Visualizer_Joint(String navn, Colour col, int blk_L, int blk_B, int blk_T)
-	{
-		name = navn;
-		block = new Visualizer_Block(blk_L, blk_B, blk_T, &col, 0);
-	}
-
-	~Visualizer_Joint()
-	{
-
-	}
-
-	String name = "";
-	Visualizer_Block* block;
-	bool is_AboveHip = false;
-
-	void setVisible(bool on)
-	{
-		block->setVisible(on);
-	}
-};
-
-class Visualizer_BodySegment
-{
-public:
-	Visualizer_BodySegment(String navn, int numBlks, Colour col, int blk_L, 
-		int blk_B, int blk_T, Visualizer_Joint* j_A, Visualizer_Joint* j_B, bool is_AboveHip)
-	{
-		name = navn;
-		numBlocks = numBlks;
-		Visualizer_Block* blockPtr;
-		
-		for (int i = 0; i < numBlks; i++)
-		{
-			blockPtr = new Visualizer_Block(blk_L, blk_B, blk_T, &col, i);
-			blockVector.push_back(*blockPtr);
-		}
-
-		joint_Above = j_A;
-		joint_Below = j_B;
-
-		isAbove_HIP = is_AboveHip;
-	};
-
-	~Visualizer_BodySegment()
-	{
-		blockVector.clear();
-	};
-
-	String name = "";
-	std::vector<Visualizer_Block> blockVector;
-	int numBlocks = 0;
-	bool isOnline = false;
-	bool isAbove_HIP = false;
-	float pitch = 0;
-	float roll = 0;
-
-	Visualizer_Joint* joint_Above;
-	Visualizer_Joint* joint_Below;
-
-	void updateAngles(float pt, float rl)
-	{
-		pitch = pt;
-		roll = rl;
-	}
-
-	void updatePosition()
-	{
-
-	}
-
-	void updateAlpha()
-	{
-		for (Visualizer_Block& iter : blockVector)
-		{
-			iter.updateAlpha(isOnline);
-		}
-
-		if (isAbove_HIP) joint_Above->block->updateAlpha(isOnline);
-		else joint_Below->block->updateAlpha(isOnline);
-	}
-
-	void setVisible(bool on)
-	{
-		for (Visualizer_Block& iter : blockVector)
-			iter.setVisible(on);
-	}
-};
-
-class Visualizer
-{
-public:
-	Visualizer()
-	{
-		// INITIALIZE ALL JOINTS
-		head = new Visualizer_Joint("Head", Colours::yellow, 50, 50, 50);
-		hip = new Visualizer_Joint("Hip", Colours::yellow, 50, 50, 200);
-		knee_L = new Visualizer_Joint("Knee L", Colours::yellow, 40, 40, 40);
-		knee_R = new Visualizer_Joint("Knee R", Colours::yellow, 40, 40, 40);
-		ankle_L = new Visualizer_Joint("Ankle L", Colours::yellow, 70, 40, 40);
-		ankle_R = new Visualizer_Joint("Ankle R", Colours::yellow, 70, 40, 40);
-
-		// INITIALIZE ALL SEGMENTS
-		trunk = new Visualizer_BodySegment("Trunk", 10, Colours::blue, 9, 2, 9, head, hip, true);
-		thigh_L = new Visualizer_BodySegment("Thigh L", 10, Colours::blue, 5, 2, 5, hip, knee_L, false);
-		thigh_R = new Visualizer_BodySegment("Thigh R", 10, Colours::blue, 5, 2, 5, hip, knee_R, false);
-		shank_L = new Visualizer_BodySegment("Shank L", 10, Colours::blue, 5, 2, 5, knee_L, ankle_L, false);
-		shank_R = new Visualizer_BodySegment("Shank R", 10, Colours::blue, 5, 2, 5, knee_R, ankle_R, false);
-
-		// TEXT COLOUR OF JOINTS
-		ankle_L->block->front->setColour(ankle_L->block->front->textColourId, Colours::black);
-		ankle_R->block->front->setColour(ankle_R->block->front->textColourId, Colours::black);
-		knee_L->block->front->setColour(knee_L->block->front->textColourId, Colours::black);
-		knee_R->block->front->setColour(knee_R->block->front->textColourId, Colours::black);
-	};
-
-	~Visualizer()
-	{};
-
-	// JOINTS
-	Visualizer_Joint* head;
-	Visualizer_Joint* hip;
-	Visualizer_Joint* knee_L;
-	Visualizer_Joint* knee_R;
-	Visualizer_Joint* ankle_L;
-	Visualizer_Joint* ankle_R;
-
-	// SEGMENTS
-	Visualizer_BodySegment* trunk;
-	Visualizer_BodySegment* thigh_L;
-	Visualizer_BodySegment* thigh_R;
-	Visualizer_BodySegment* shank_L;
-	Visualizer_BodySegment* shank_R;
-
-	float rel_Wd_Ht_SAG_XY_Head[2] = { 0,0 };
-	float rel_Wd_Ht_SAG_XY_Hip[2] = { 0,0 };
-	float rel_Wd_Ht_SAG_XY_KneeL[2] = { 0,0 };
-	float rel_Wd_Ht_SAG_XY_KneeR[2] = { 0,0 };
-	float rel_Wd_Ht_SAG_XY_AnkleL[2] = { 0,0 };
-	float rel_Wd_Ht_SAG_XY_AnkleR[2] = { 0,0 };
-	float rel_Wd_Ht_FRN_XY_Head[2] = { 0,0 };
-	float rel_Wd_Ht_FRN_XY_Hip[2] = { 0,0 };
-	float rel_Wd_Ht_FRN_XY_KneeL[2] = { 0,0 };
-	float rel_Wd_Ht_FRN_XY_KneeR[2] = { 0,0 };
-	float rel_Wd_Ht_FRN_XY_AnkleL[2] = { 0,0 };
-	float rel_Wd_Ht_FRN_XY_AnkleR[2] = { 0,0 };
-
-	float center_SAG_XY_Head[2] = { 0, 0 };
-	float center_SAG_XY_Hip[2] = { 0.5, 0.5 };
-	float center_SAG_XY_KneeL[2] = { 0, 0 };
-	float center_SAG_XY_KneeR[2] = { 0, 0 };
-	float center_SAG_XY_AnkleL[2] = { 0, 0 };
-	float center_SAG_XY_AnkleR[2] = { 0, 0 };
-	float center_FRN_XY_Head[2] = { 0, 0 };
-	float center_FRN_XY_Hip[2] = { 0.5, 0.5 };
-	float center_FRN_XY_KneeL[2] = { 0, 0 };
-	float center_FRN_XY_KneeR[2] = { 0, 0 };
-	float center_FRN_XY_AnkleL[2] = { 0, 0 };
-	float center_FRN_XY_AnkleR[2] = { 0, 0 };
-
-	float topLeft_SAG_XY_Head[2] = { 0, 0 };
-	float topLeft_SAG_XY_Hip[2] = { 0, 0 };
-	float topLeft_SAG_XY_KneeL[2] = { 0, 0 };
-	float topLeft_SAG_XY_KneeR[2] = { 0, 0 };
-	float topLeft_SAG_XY_AnkleL[2] = { 0, 0 };
-	float topLeft_SAG_XY_AnkleR[2] = { 0, 0 };
-	float topLeft_FRN_XY_Head[2] = { 0, 0 };
-	float topLeft_FRN_XY_Hip[2] = { 0, 0 };
-	float topLeft_FRN_XY_KneeL[2] = { 0, 0 };
-	float topLeft_FRN_XY_KneeR[2] = { 0, 0 };
-	float topLeft_FRN_XY_AnkleL[2] = { 0, 0 };
-	float topLeft_FRN_XY_AnkleR[2] = { 0, 0 };
-
-	float topCenter_SAG_XY_Head[2] = { 0, 0 };
-	float topCenter_SAG_XY_Hip[2] = { 0, 0 };
-	float topCenter_SAG_XY_KneeL[2] = { 0, 0 };
-	float topCenter_SAG_XY_KneeR[2] = { 0, 0 };
-	float topCenter_SAG_XY_AnkleL[2] = { 0, 0 };
-	float topCenter_SAG_XY_AnkleR[2] = { 0, 0 };
-	float topCenter_FRN_XY_Head[2] = { 0, 0 };
-	float topCenter_FRN_XY_Hip[2] = { 0, 0 };
-	float topCenter_FRN_XY_KneeL[2] = { 0, 0 };
-	float topCenter_FRN_XY_KneeR[2] = { 0, 0 };
-	float topCenter_FRN_XY_AnkleL[2] = { 0, 0 };
-	float topCenter_FRN_XY_AnkleR[2] = { 0, 0 };
-
-	float bottomCenter_SAG_XY_Head[2] = { 0, 0 };
-	float bottomCenter_SAG_XY_Hip[2] = { 0, 0 };
-	float bottomCenter_SAG_XY_KneeL[2] = { 0, 0 };
-	float bottomCenter_SAG_XY_KneeR[2] = { 0, 0 };
-	float bottomCenter_SAG_XY_AnkleL[2] = { 0, 0 };
-	float bottomCenter_SAG_XY_AnkleR[2] = { 0, 0 };
-	float bottomCenter_FRN_XY_Head[2] = { 0, 0 };
-	float bottomCenter_FRN_XY_Hip[2] = { 0, 0 };
-	float bottomCenter_FRN_XY_KneeL[2] = { 0, 0 };
-	float bottomCenter_FRN_XY_KneeR[2] = { 0, 0 };
-	float bottomCenter_FRN_XY_AnkleL[2] = { 0, 0 };
-	float bottomCenter_FRN_XY_AnkleR[2] = { 0, 0 };
-
-	float htFrac_Trunk = 0.402 * 0.95;
-	float htFrac_Thigh = 0.241 * 0.95;
-	float htFrac_Shank = 0.23 * 0.95;
-
-	float legOffset = 0.2;
-
-	void update(UI_ControlGroup* uiGrp_SAG, UI_ControlGroup* uiGrp_FRN, bool isStance_L, 
-		bool isStance_R, float ang_Knee_L, float ang_Knee_R, bool isStationary, bool isTurning)
-	{
-		// CHANGE ALPHA BASED ON ONLINE STATUS
-		trunk->updateAlpha();
-		thigh_L->updateAlpha();
-		thigh_R->updateAlpha();
-		shank_L->updateAlpha();
-		shank_R->updateAlpha();
-
-		// CUSTOM LOGIC TO UPDATE POSITIONS OF ALL JOINTS AND SEGMENTS (!)
-
-		// PLACE BODY SEGMENTS
-
-		// POPULATE RELATIVE X and Y COORDINATES
-
-		// TRUNK
-		for (Visualizer_Block& iter : trunk->blockVector)
-		{
-			getIncrementalXY_fromEndPoints(center_SAG_XY_Hip[0], center_SAG_XY_Head[0], center_SAG_XY_Hip[1], center_SAG_XY_Head[1],
-				iter.idx, trunk->numBlocks, &iter.sagit_X, &iter.sagit_Y);
-
-			iter.placeLabel_inUIGroup(uiGrp_SAG, 1, iter.sagit_X, iter.sagit_Y, 0.01, 0.02);
-
-			getIncrementalXY_fromEndPoints(center_FRN_XY_Hip[0], center_FRN_XY_Head[0], center_FRN_XY_Hip[1], center_FRN_XY_Head[1],
-				iter.idx, trunk->numBlocks, &iter.front_X, &iter.front_Y);
-
-			iter.placeLabel_inUIGroup(uiGrp_FRN, 2, iter.front_X, iter.front_Y, 0.01, 0.02);
-		}
-
-		// THIGH L
-		for (Visualizer_Block& iter : thigh_L->blockVector)
-		{
-			getIncrementalXY_fromEndPoints(center_SAG_XY_KneeL[0], center_SAG_XY_Hip[0], center_SAG_XY_KneeL[1], center_SAG_XY_Hip[1],
-				iter.idx, thigh_L->numBlocks, &iter.sagit_X, &iter.sagit_Y);
-
-			iter.placeLabel_inUIGroup(uiGrp_SAG, 1, iter.sagit_X, iter.sagit_Y, 0.01, 0.02);
-
-			getIncrementalXY_fromEndPoints(center_FRN_XY_KneeL[0], center_FRN_XY_Hip[0] - legOffset , center_FRN_XY_KneeL[1], center_FRN_XY_Hip[1],
-				iter.idx, thigh_L->numBlocks, &iter.front_X, &iter.front_Y);
-
-			iter.placeLabel_inUIGroup(uiGrp_FRN, 2, iter.front_X, iter.front_Y, 0.01, 0.02);
-		}
-
-		// THIGH R
-		for (Visualizer_Block& iter : thigh_R->blockVector)
-		{
-			getIncrementalXY_fromEndPoints(center_SAG_XY_KneeR[0], center_SAG_XY_Hip[0], center_SAG_XY_KneeR[1], center_SAG_XY_Hip[1],
-				iter.idx, thigh_R->numBlocks, &iter.sagit_X, &iter.sagit_Y);
-
-			iter.placeLabel_inUIGroup(uiGrp_SAG, 1, iter.sagit_X, iter.sagit_Y, 0.01, 0.02);
-
-			getIncrementalXY_fromEndPoints(center_FRN_XY_KneeR[0], center_FRN_XY_Hip[0] + legOffset, center_FRN_XY_KneeR[1], center_FRN_XY_Hip[1],
-				iter.idx, thigh_R->numBlocks, &iter.front_X, &iter.front_Y);
-
-			iter.placeLabel_inUIGroup(uiGrp_FRN, 2, iter.front_X, iter.front_Y, 0.01, 0.02);
-		}
-
-		// SHANK L
-		for (Visualizer_Block& iter : shank_L->blockVector)
-		{
-			getIncrementalXY_fromEndPoints(center_SAG_XY_AnkleL[0], center_SAG_XY_KneeL[0], center_SAG_XY_AnkleL[1], center_SAG_XY_KneeL[1],
-				iter.idx, shank_L->numBlocks, &iter.sagit_X, &iter.sagit_Y);
-
-			iter.placeLabel_inUIGroup(uiGrp_SAG, 1, iter.sagit_X, iter.sagit_Y, 0.01, 0.02);
-
-			getIncrementalXY_fromEndPoints(center_FRN_XY_AnkleL[0], center_FRN_XY_KneeL[0], center_FRN_XY_AnkleL[1], center_FRN_XY_KneeL[1],
-				iter.idx, shank_L->numBlocks, &iter.front_X, &iter.front_Y);
-
-			iter.placeLabel_inUIGroup(uiGrp_FRN, 2, iter.front_X, iter.front_Y, 0.01, 0.02);
-		}
-
-		// SHANK R
-		for (Visualizer_Block& iter : shank_R->blockVector)
-		{
-			getIncrementalXY_fromEndPoints(center_SAG_XY_AnkleR[0], center_SAG_XY_KneeR[0], center_SAG_XY_AnkleR[1], center_SAG_XY_KneeR[1],
-				iter.idx, shank_R->numBlocks, &iter.sagit_X, &iter.sagit_Y);
-
-			iter.placeLabel_inUIGroup(uiGrp_SAG, 1, iter.sagit_X, iter.sagit_Y, 0.01, 0.02);
-
-			getIncrementalXY_fromEndPoints(center_FRN_XY_AnkleR[0], center_FRN_XY_KneeR[0], center_FRN_XY_AnkleR[1], center_FRN_XY_KneeR[1],
-				iter.idx, shank_R->numBlocks, &iter.front_X, &iter.front_Y);
-
-			iter.placeLabel_inUIGroup(uiGrp_FRN, 2, iter.front_X, iter.front_Y, 0.01, 0.02);
-		}
-
-		// UPDATE JOINT POSITION IN BOTH PLANES (CHECK IF SENSOR IN HIP DIRECTION ONLINE FIRST)
-		hip->block->placeLabel_inUIGroup(uiGrp_SAG, 1, topLeft_SAG_XY_Hip[0], topLeft_SAG_XY_Hip[1], rel_Wd_Ht_SAG_XY_Hip[0], rel_Wd_Ht_SAG_XY_Hip[1]);
-		head->block->placeLabel_inUIGroup(uiGrp_SAG, 1, topLeft_SAG_XY_Head[0], topLeft_SAG_XY_Head[1], rel_Wd_Ht_SAG_XY_Head[0], rel_Wd_Ht_SAG_XY_Head[1]);
-		knee_L->block->placeLabel_inUIGroup(uiGrp_SAG, 1, topLeft_SAG_XY_KneeL[0], topLeft_SAG_XY_KneeL[1], rel_Wd_Ht_SAG_XY_KneeL[0], rel_Wd_Ht_SAG_XY_KneeL[1]);
-		knee_R->block->placeLabel_inUIGroup(uiGrp_SAG, 1, topLeft_SAG_XY_KneeR[0], topLeft_SAG_XY_KneeR[1], rel_Wd_Ht_SAG_XY_KneeR[0], rel_Wd_Ht_SAG_XY_KneeR[1]);
-		ankle_L->block->placeLabel_inUIGroup(uiGrp_SAG, 1, topLeft_SAG_XY_AnkleL[0], topLeft_SAG_XY_AnkleL[1], rel_Wd_Ht_SAG_XY_AnkleL[0], rel_Wd_Ht_SAG_XY_AnkleL[1]);
-		ankle_R->block->placeLabel_inUIGroup(uiGrp_SAG, 1, topLeft_SAG_XY_AnkleR[0], topLeft_SAG_XY_AnkleR[1], rel_Wd_Ht_SAG_XY_AnkleR[0], rel_Wd_Ht_SAG_XY_AnkleR[1]);
-		
-		hip->block->placeLabel_inUIGroup(uiGrp_FRN, 2, topLeft_FRN_XY_Hip[0], topLeft_FRN_XY_Hip[1], rel_Wd_Ht_FRN_XY_Hip[0], rel_Wd_Ht_FRN_XY_Hip[1]);
-		head->block->placeLabel_inUIGroup(uiGrp_FRN, 2, topLeft_FRN_XY_Head[0], topLeft_FRN_XY_Head[1], rel_Wd_Ht_FRN_XY_Head[0], rel_Wd_Ht_FRN_XY_Head[1]);
-		knee_L->block->placeLabel_inUIGroup(uiGrp_FRN, 2, topLeft_FRN_XY_KneeL[0], topLeft_FRN_XY_KneeL[1], rel_Wd_Ht_FRN_XY_KneeL[0], rel_Wd_Ht_FRN_XY_KneeL[1]);
-		knee_R->block->placeLabel_inUIGroup(uiGrp_FRN, 2, topLeft_FRN_XY_KneeR[0], topLeft_FRN_XY_KneeR[1], rel_Wd_Ht_FRN_XY_KneeR[0], rel_Wd_Ht_FRN_XY_KneeR[1]);
-		ankle_L->block->placeLabel_inUIGroup(uiGrp_FRN, 2, topLeft_FRN_XY_AnkleL[0], topLeft_FRN_XY_AnkleL[1], rel_Wd_Ht_FRN_XY_AnkleL[0], rel_Wd_Ht_FRN_XY_AnkleL[1]);
-		ankle_R->block->placeLabel_inUIGroup(uiGrp_FRN, 2, topLeft_FRN_XY_AnkleR[0], topLeft_FRN_XY_AnkleR[1], rel_Wd_Ht_FRN_XY_AnkleR[0], rel_Wd_Ht_FRN_XY_AnkleR[1]);
-
-		// UPDATE KNEE ANGLE TEXT
-		knee_L->block->front->setText(String(ang_Knee_L, 2), dontSendNotification);
-		knee_R->block->front->setText(String(ang_Knee_R, 2), dontSendNotification);
-
-		// SET COLOUR BASED ON STANCE OR SWING
-		if (isStance_L)
-		{
-			ankle_L->block->front->setColour(ankle_L->block->front->backgroundColourId, Colours::green);
-			ankle_L->block->sagit->setColour(ankle_L->block->sagit->backgroundColourId, Colours::green);
-			ankle_L->block->front->setText("Stance", dontSendNotification);
-		}
-
-		else
-		{
-			ankle_L->block->front->setColour(ankle_L->block->front->backgroundColourId, Colours::yellow);
-			ankle_L->block->sagit->setColour(ankle_L->block->sagit->backgroundColourId, Colours::yellow);
-			ankle_L->block->front->setText("Swing", dontSendNotification);
-		}
-
-		if (isStance_R)
-		{
-			ankle_R->block->front->setColour(ankle_R->block->front->backgroundColourId, Colours::green);
-			ankle_R->block->sagit->setColour(ankle_R->block->sagit->backgroundColourId, Colours::green);
-			ankle_R->block->front->setText("Stance", dontSendNotification);
-		}
-
-		else
-		{
-			ankle_R->block->front->setColour(ankle_R->block->front->backgroundColourId, Colours::yellow);
-			ankle_R->block->sagit->setColour(ankle_R->block->sagit->backgroundColourId, Colours::yellow);
-			ankle_R->block->front->setText("Swing", dontSendNotification);
-		}
-
-		// UPDATE COLOUR BASED ON STATIONARY ON TURNING
-		hip->block->front->setColour(hip->block->front->backgroundColourId, Colours::yellow);
-		if (isStationary)
-			hip->block->front->setColour(hip->block->front->backgroundColourId, Colours::orange);
-		if (isTurning)
-			hip->block->front->setColour(hip->block->front->backgroundColourId, Colours::blue);
-			
-	}
-
-	void setJointPositions(UI_ControlGroup* uiGrp_SAG, UI_ControlGroup* uiGrp_FRN)
-	{
-		// CUSTOM COORDINATES RELATIVE TO UI CONTROL GROUP // X , Y // 
-
-		// GET HIP TOP LEFT COORDINATES
-		uiGrp_SAG->getRelativePos_TopCorner_fromCenter(hip->block->length, hip->block->breadth, center_SAG_XY_Hip[0], center_SAG_XY_Hip[1],
-			&topLeft_SAG_XY_Hip[0], &topLeft_SAG_XY_Hip[1], &rel_Wd_Ht_SAG_XY_Hip[0], &rel_Wd_Ht_SAG_XY_Hip[1]);
-		uiGrp_FRN->getRelativePos_TopCorner_fromCenter(hip->block->thickness, hip->block->breadth, center_FRN_XY_Hip[0], center_FRN_XY_Hip[1],
-			&topLeft_FRN_XY_Hip[0], &topLeft_FRN_XY_Hip[1], &rel_Wd_Ht_FRN_XY_Hip[0], &rel_Wd_Ht_FRN_XY_Hip[1]);
-
-		// GET HEAD CENTER COORDINATES
-		getDistalXY_fromProximalXY(1, true, center_SAG_XY_Hip[0], center_SAG_XY_Hip[1], htFrac_Trunk, trunk->pitch, trunk->roll, &center_SAG_XY_Head[0], &center_SAG_XY_Head[1]);
-		getDistalXY_fromProximalXY(2, true, center_FRN_XY_Hip[0], center_FRN_XY_Hip[1], htFrac_Trunk, trunk->pitch, trunk->roll, &center_FRN_XY_Head[0], &center_FRN_XY_Head[1]);
-
-		// GET HEAD TOPLEFT COORDINATES
-		uiGrp_SAG->getRelativePos_TopCorner_fromCenter(head->block->length, head->block->breadth, center_SAG_XY_Head[0], center_SAG_XY_Head[1],
-			&topLeft_SAG_XY_Head[0], &topLeft_SAG_XY_Head[1], &rel_Wd_Ht_SAG_XY_Head[0], &rel_Wd_Ht_SAG_XY_Head[1]);
-		uiGrp_FRN->getRelativePos_TopCorner_fromCenter(head->block->thickness, head->block->breadth, center_FRN_XY_Head[0], center_FRN_XY_Head[1],
-			&topLeft_FRN_XY_Head[0], &topLeft_FRN_XY_Head[1], &rel_Wd_Ht_FRN_XY_Head[0], &rel_Wd_Ht_FRN_XY_Head[1]);
-
-		// GET LEFT KNEE CENTER COORDINATES
-		getDistalXY_fromProximalXY(1, false, center_SAG_XY_Hip[0], center_SAG_XY_Hip[1], htFrac_Thigh, thigh_L->pitch, thigh_L->roll, &center_SAG_XY_KneeL[0], &center_SAG_XY_KneeL[1]);
-		getDistalXY_fromProximalXY(2, false, center_FRN_XY_Hip[0] - legOffset, center_FRN_XY_Hip[1], htFrac_Thigh, thigh_L->pitch, thigh_L->roll, &center_FRN_XY_KneeL[0], &center_FRN_XY_KneeL[1]);
-
-		// GET LEFT ANKLE CENTER COORDINATES
-		getDistalXY_fromProximalXY(1, false, center_SAG_XY_KneeL[0], center_SAG_XY_KneeL[1], htFrac_Shank, shank_L->pitch, shank_L->roll, &center_SAG_XY_AnkleL[0], &center_SAG_XY_AnkleL[1]);
-		getDistalXY_fromProximalXY(2, false, center_FRN_XY_KneeL[0], center_FRN_XY_KneeL[1], htFrac_Shank, shank_L->pitch, shank_L->roll, &center_FRN_XY_AnkleL[0], &center_FRN_XY_AnkleL[1]);
-
-		// GET RIGHT KNEE CENTER COORDINATES
-		getDistalXY_fromProximalXY(1, false, center_SAG_XY_Hip[0], center_SAG_XY_Hip[1], htFrac_Thigh, thigh_R->pitch, thigh_R->roll, &center_SAG_XY_KneeR[0], &center_SAG_XY_KneeR[1]);
-		getDistalXY_fromProximalXY(2, false, center_FRN_XY_Hip[0] + legOffset, center_FRN_XY_Hip[1], htFrac_Thigh, thigh_R->pitch, thigh_R->roll, &center_FRN_XY_KneeR[0], &center_FRN_XY_KneeR[1]);
-
-		// GET RIGHT ANKLE CENTER COORDINATES
-		getDistalXY_fromProximalXY(1, false, center_SAG_XY_KneeR[0], center_SAG_XY_KneeR[1], htFrac_Shank, shank_R->pitch, shank_R->roll, &center_SAG_XY_AnkleR[0], &center_SAG_XY_AnkleR[1]);
-		getDistalXY_fromProximalXY(2, false, center_FRN_XY_KneeR[0], center_FRN_XY_KneeR[1], htFrac_Shank, shank_R->pitch, shank_R->roll, &center_FRN_XY_AnkleR[0], &center_FRN_XY_AnkleR[1]);
-
-		// GET LEFT KNEE TOPLEFT COORDINATES
-		uiGrp_SAG->getRelativePos_TopCorner_fromCenter(knee_L->block->length, knee_L->block->breadth, center_SAG_XY_KneeL[0], center_SAG_XY_KneeL[1],
-			&topLeft_SAG_XY_KneeL[0], &topLeft_SAG_XY_KneeL[1], &rel_Wd_Ht_SAG_XY_KneeL[0], &rel_Wd_Ht_SAG_XY_KneeL[1]);
-		uiGrp_FRN->getRelativePos_TopCorner_fromCenter(knee_L->block->thickness, knee_L->block->breadth, center_FRN_XY_KneeL[0], center_FRN_XY_KneeL[1],
-			&topLeft_FRN_XY_KneeL[0], &topLeft_FRN_XY_KneeL[1], &rel_Wd_Ht_FRN_XY_KneeL[0], &rel_Wd_Ht_FRN_XY_KneeL[1]);
-
-		// GET LEFT ANKLE TOPLEFT COORDINATES
-		uiGrp_SAG->getRelativePos_TopCorner_fromCenter(ankle_L->block->length, ankle_L->block->breadth, center_SAG_XY_AnkleL[0], center_SAG_XY_AnkleL[1],
-			&topLeft_SAG_XY_AnkleL[0], &topLeft_SAG_XY_AnkleL[1], &rel_Wd_Ht_SAG_XY_AnkleL[0], &rel_Wd_Ht_SAG_XY_AnkleL[1]);
-		uiGrp_FRN->getRelativePos_TopCorner_fromCenter(ankle_L->block->thickness, ankle_L->block->breadth, center_FRN_XY_AnkleL[0], center_FRN_XY_AnkleL[1],
-			&topLeft_FRN_XY_AnkleL[0], &topLeft_FRN_XY_AnkleL[1], &rel_Wd_Ht_FRN_XY_AnkleL[0], &rel_Wd_Ht_FRN_XY_AnkleL[1]);
-
-		// GET RIGHT KNEE TOPLEFT COORDINATES
-		uiGrp_SAG->getRelativePos_TopCorner_fromCenter(knee_R->block->length, knee_R->block->breadth, center_SAG_XY_KneeR[0], center_SAG_XY_KneeR[1],
-			&topLeft_SAG_XY_KneeR[0], &topLeft_SAG_XY_KneeR[1], &rel_Wd_Ht_SAG_XY_KneeR[0], &rel_Wd_Ht_SAG_XY_KneeR[1]);
-		uiGrp_FRN->getRelativePos_TopCorner_fromCenter(knee_R->block->thickness, knee_R->block->breadth, center_FRN_XY_KneeR[0], center_FRN_XY_KneeR[1],
-			&topLeft_FRN_XY_KneeR[0], &topLeft_FRN_XY_KneeR[1], &rel_Wd_Ht_FRN_XY_KneeR[0], &rel_Wd_Ht_FRN_XY_KneeR[1]);
-
-		// GET RIGHT ANKLE TOPLEFT COORDINATES
-		uiGrp_SAG->getRelativePos_TopCorner_fromCenter(ankle_R->block->length, ankle_R->block->breadth, center_SAG_XY_AnkleR[0], center_SAG_XY_AnkleR[1],
-			&topLeft_SAG_XY_AnkleR[0], &topLeft_SAG_XY_AnkleR[1], &rel_Wd_Ht_SAG_XY_AnkleR[0], &rel_Wd_Ht_SAG_XY_AnkleR[1]);
-		uiGrp_FRN->getRelativePos_TopCorner_fromCenter(ankle_R->block->thickness, ankle_R->block->breadth, center_FRN_XY_AnkleR[0], center_FRN_XY_AnkleR[1],
-			&topLeft_FRN_XY_AnkleR[0], &topLeft_FRN_XY_AnkleR[1], &rel_Wd_Ht_FRN_XY_AnkleR[0], &rel_Wd_Ht_FRN_XY_AnkleR[1]);
-	}
-
-	void setVisible(bool on)
-	{
-		head->setVisible(on);
-		hip->setVisible(on);
-		knee_L->setVisible(on);
-		knee_R->setVisible(on);
-		ankle_L->setVisible(on);
-		ankle_R->setVisible(on);
-		trunk->setVisible(on);
-		thigh_L->setVisible(on);
-		thigh_R->setVisible(on);
-		shank_L->setVisible(on);
-		shank_R->setVisible(on);
-	}
-
-	void getDistalXY_fromProximalXY(short plane, bool isDist_Above_Hip, float x_Prox, float y_Prox, float length_Rel, float pitch, float roll, float* x_Dist, float* y_Dist)
-	{
-		float temp = 0;
-		switch(plane)
-		{
-		case 1:
-			break;
-		case 2:
-			temp = roll;
-			roll = pitch;
-			pitch = temp;
-			break;
-		}
-
-		float pitchRad = pitch * M_PI / 180.0;
-		float rollRad = roll * M_PI / 180.0;
-		float rollRad_COS = cos(rollRad);
-
-		if (isDist_Above_Hip)
-		{
-			*x_Dist = x_Prox + length_Rel * sin(pitchRad) * rollRad_COS;
-			*y_Dist = y_Prox - length_Rel * cos(pitchRad) * rollRad_COS;
-		}
-
-		else
-		{
-			*x_Dist = x_Prox - length_Rel * sin(pitchRad) * rollRad_COS;
-			*y_Dist = y_Prox + length_Rel * cos(pitchRad) * rollRad_COS;
-		}
-	}
-
-	void getIncrementalXY_fromEndPoints(float x1, float x2, float y1, float y2, int blk_Idx, int blk_Tot, float* blk_X, float* blk_Y)
-	{
-		float frac = (float)blk_Idx / (float)blk_Tot;
-		*blk_X = x1 + (x2 - x1) * frac;
-		*blk_Y = y1 + (y2 - y1) * frac;
-	}
-};
 
 class Differentiator
 {
@@ -2075,5 +1311,121 @@ public:
 	void setVisible(bool on)
 	{
 		set_Osc_Freq->setVisible(on);
+	}
+};
+
+class EnergyCompute
+{
+public:
+	EnergyCompute()
+	{
+		smoothe_CoM_Speed.flushDelays();
+		smoothe_CoM_Speed.calculateLPFCoeffs(5, 0.7, 100);
+	}
+
+	~EnergyCompute()
+	{
+
+	}
+
+	BiQuad smoothe_CoM_Speed;
+	float CoM_Coord_H = 0;
+	float CoM_Coord_V = 0;
+	float CoM_Speed = 0;
+
+	// Delay Variables
+	float CoM_H_Disp_z1 = 0;
+	float CoM_V_Disp_z1 = 0;
+
+	void calcCoMCoordinates(float pitch_Trunk, float pitch_Thigh, float pitch_Shank)
+	{
+		float seg_AP_Ang_Vals[3] = {
+			pitch_Trunk,
+			pitch_Thigh,
+			pitch_Shank };
+
+		float seg_wtFracs[3] = { 0.59, 0.29, 0.09 };
+		float seg_LnFracs[3] = { 0.402, 0.241, 0.25 };
+		float seg_CoM_Dist_Joint[3] = { 0.57, 0.59, 0.55 };
+
+		float seg_CoM_X[3] = { 0.0, 0.0, 0.0 };
+		float seg_CoM_Y[3] = { 0.0, 0.0, 0.0 };
+
+		float body_CoM_X = 0;
+		float body_CoM_Y = 0;
+
+		// Helper Variables	-- START WITH ANKLE
+		float lastJointX = 0;
+		float lastJointY = 0;
+
+		// Calculate CoM Locations of each body segment
+		for (int i = 0; i < 3; i++)
+		{
+			int j = 2 - i;
+			// CoM of Segment: Last Joint Position + sin(seg Angle) x seg length x seg CoM percentage of length
+			seg_CoM_X[j] = lastJointX + sin(M_PI / 180.0 * seg_AP_Ang_Vals[j]) * seg_LnFracs[j] * seg_CoM_Dist_Joint[j];
+			seg_CoM_Y[j] = lastJointY + cos(M_PI / 180.0 * seg_AP_Ang_Vals[j]) * seg_LnFracs[j] * seg_CoM_Dist_Joint[j];
+
+			// Find relative position of next joint in space
+			lastJointX += sin(M_PI / 180.0 * seg_AP_Ang_Vals[j]) * seg_LnFracs[j];
+			lastJointY += cos(M_PI / 180.0 * seg_AP_Ang_Vals[j]) * seg_LnFracs[j];
+		}
+
+		float numSum_X = 0;
+		float numSum_Y = 0;
+		float denSum = seg_wtFracs[0] + seg_wtFracs[1] + seg_wtFracs[2];
+
+		for (int i = 0; i < 3; i++)
+		{
+			numSum_X += seg_wtFracs[0] * seg_CoM_X[i];
+			numSum_Y += seg_wtFracs[0] * seg_CoM_Y[i];
+		}
+
+		CoM_Coord_H = numSum_X / denSum;
+		CoM_Coord_V = numSum_Y / denSum;
+		
+		// CALCULATE CoM Speed
+		float CoM_H_Spd = fabs(CoM_Coord_H - CoM_H_Disp_z1) * 100;
+		float CoM_V_Spd = fabs(CoM_Coord_V - CoM_V_Disp_z1) * 100;
+
+		CoM_Speed = sqrt(CoM_H_Spd * CoM_H_Spd + CoM_V_Spd * CoM_V_Spd);
+		CoM_Speed = smoothe_CoM_Speed.doBiQuad(CoM_Speed, 0);
+		CoM_Speed = jlimit(0.0, 1.0, (double)CoM_Speed);
+
+		CoM_H_Disp_z1 = CoM_Coord_H;
+		CoM_V_Disp_z1 = CoM_Coord_V;
+	}
+};
+
+class CoM_Info_Display
+{
+public:
+	UI_ControlGroup* ui_Grp;
+	Label* CoM_H;
+	Label* CoM_V;
+	Label* CoM_Speed;
+
+	CoM_Info_Display(UI_ControlGroup* uiGroup)
+	{
+		ui_Grp = uiGroup;
+		CoM_H = new Label("", "CoM_Horz_Loc = ");
+		CoM_V = new Label("", "CoM_Vert_Loc = ");
+		CoM_Speed = new Label("", "CoM_Speed = ");
+
+		CoM_H->setJustificationType(Justification::centred);
+		CoM_V->setJustificationType(Justification::centred);
+		CoM_Speed->setJustificationType(Justification::centred);
+	}
+
+	~CoM_Info_Display()
+	{
+
+	}
+
+	void update(float h, float v, float speed)
+	{
+		CoM_H->setText("CoM_Horz_Loc = " + String(h, 3), dontSendNotification);
+		CoM_V->setText("CoM_Vert_Loc = " + String(v, 3), dontSendNotification);
+		CoM_Speed->setText("CoM_Speed = " + String(speed, 3), dontSendNotification);
 	}
 };

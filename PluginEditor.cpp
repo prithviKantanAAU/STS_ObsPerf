@@ -143,6 +143,10 @@ void STS_ObsPerfAudioProcessorEditor::addAllElements_MOV()
     addAndMakeVisible(ptr_MOV->masterLevel->meter_Empty);
     addAndMakeVisible(ptr_MOV->masterLevel->meter_Full);
     addAndMakeVisible(ptr_MOV->masterGain);
+    
+    addAndMakeVisible(ptr_MOV->comDisplay->CoM_H);
+    addAndMakeVisible(ptr_MOV->comDisplay->CoM_V);
+    addAndMakeVisible(ptr_MOV->comDisplay->CoM_Speed);
 
     for (MappingSlider& iter : ptr_MOV->mappingSliders)
     {

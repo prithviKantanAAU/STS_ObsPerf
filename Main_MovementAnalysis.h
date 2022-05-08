@@ -14,6 +14,8 @@ public:
 	std::string mpLog_Format = "%s,\n";
 	unsigned long lines_written = 0;
 	OSC_MobileControl oscControl;
+	EnergyCompute energyCompute;
+	CoM_Info_Display* comDisplay;
 
 	// Common UI Elements
 	UI_ControlGroup* CoM_Vis;
@@ -64,6 +66,7 @@ public:
 		MasterControl = new UI_ControlGroup("Master Volume", Colours::green);
 		VideoControl = new UI_ControlGroup("Video", Colours::green);
 		MiscControl = new UI_ControlGroup("Movement", Colours::green);
+		comDisplay = new CoM_Info_Display(CoM_Vis);
 
 		// CREATE MAPPING SLIDERS
 		MappingSlider* sliderPtr = new MappingSlider("Control 1", 0, 0.5);
@@ -97,25 +100,24 @@ public:
 		MovementFeature* featurePtr;
 
 		// CONTINUOUS VARIABLES
-		featurePtr = new MovementFeature("Ang_AP_Shank_L", -90, 90, 0, false);
+		featurePtr = new MovementFeature("Ang_AP_Shank", -90, 90, 0, false);
 		movementFeatures.push_back(*featurePtr);
 
-		featurePtr = new MovementFeature("Ang_AP_Shank_R", -90, 90, 0, false);
-		movementFeatures.push_back(*featurePtr);
-
-		featurePtr = new MovementFeature("Ang_AP_Thigh_L", -90, 90, 0, false);
-		movementFeatures.push_back(*featurePtr);
-
-		featurePtr = new MovementFeature("Ang_AP_Thigh_R", -90, 90, 0, false);
+		featurePtr = new MovementFeature("Ang_AP_Thigh", -90, 90, 0, false);
 		movementFeatures.push_back(*featurePtr);
 
 		featurePtr = new MovementFeature("Ang_AP_Trunk", -90, 90, 0, false);
 		movementFeatures.push_back(*featurePtr);
 
-		// ADD FEATURES
-		// COM X
-		// COM Y
-		// COM SPEED
+		featurePtr = new MovementFeature("CoM_Coord_H", -1, 1, 0, false);
+		movementFeatures.push_back(*featurePtr);
+
+		featurePtr = new MovementFeature("CoM_Coord_V", 0, 1, 0, false);
+		movementFeatures.push_back(*featurePtr);
+
+		featurePtr = new MovementFeature("CoM_Speed", 0, 15, 0, false);
+		movementFeatures.push_back(*featurePtr);
+
 	}
 
 	~Main_MovementAnalysis()
@@ -125,7 +127,7 @@ public:
 
 	void callback(Main_Sensors *sensObj, bool isSensor_Recording, FILE* mpLogFile)
 	{
-		calcJointAngles(sensObj);
+		calcMovParams(sensObj);
 		updateVisualizerData(sensObj);
 		//handleOscillatorUpdate();
 		// MP LOGGING
@@ -173,6 +175,11 @@ public:
 		masterLevel->setVisible(on);
 		masterGain->setVisible(on);
 
+		// CoM
+		comDisplay->CoM_H->setVisible(on);
+		comDisplay->CoM_V->setVisible(on);
+		comDisplay->CoM_Speed->setVisible(on);
+
 		for (MappingSlider& iter : mappingSliders)			iter.setVisible(on);
 ;	}
 
@@ -187,10 +194,11 @@ public:
 			is_First_Callback_Complete = true;
 		}
 
+		//energyMeter->processInput(energyCompute.CoM_Speed);
 		masterLevel->updateMeter();
 		energyMeter->updateMeter();
-
-		updateVisualizers(sensObj);
+		comDisplay->update(energyCompute.CoM_Coord_H, energyCompute.CoM_Coord_V, energyCompute.CoM_Speed);
+		//updateVisualizers(sensObj);
 	}
 
 	void setLayout(int wd, int ht)
@@ -207,6 +215,10 @@ public:
 		energyMeter->setLayout(EnergyVis, 0, 0.25, 1, 0.9);
 		masterLevel->setLayout(MasterControl, 0.5, 0.25, 0.45, 0.9);
 		MasterControl->memberComponent_setBounds(masterGain, 0.1, 0.25, 0.35, 0.5);
+
+		CoM_Vis->memberComponent_setBounds(comDisplay->CoM_H, 0.05, 0.0, 0.9, 0.33);
+		CoM_Vis->memberComponent_setBounds(comDisplay->CoM_V, 0.05, 0.33, 0.9, 0.33);
+		CoM_Vis->memberComponent_setBounds(comDisplay->CoM_Speed, 0.05, 0.66, 0.9, 0.33);
 
 		int numMappingSliders = mappingSliders.size();
 		float gap_Sliders_Horiz = 0.9 / (float)numMappingSliders;
@@ -248,9 +260,17 @@ public:
 		return false;
 	}
 
-	void calcJointAngles(Main_Sensors* sensObj)
+	void calcMovParams(Main_Sensors* sensObj)
 	{
-		
+		float pitch_Trunk = *sensObj->sensors.at(0).ang_Pitch;
+		float pitch_Thigh = *sensObj->sensors.at(1).ang_Pitch;
+		float pitch_Shank = *sensObj->sensors.at(2).ang_Pitch;
+
+		energyCompute.calcCoMCoordinates(pitch_Trunk, pitch_Thigh, pitch_Shank);
+
+		setValue_MovFeature("CoM_Coord_H", energyCompute.CoM_Coord_H);
+		setValue_MovFeature("CoM_Coord_V", energyCompute.CoM_Coord_V);
+		setValue_MovFeature("CoM_Speed", energyCompute.CoM_Speed);
 	}
 
 	void setAngle(Main_Sensors* sensObj, String loc, short axis, float value)
@@ -327,3 +347,5 @@ public:
 		else lines_written = 0;
 	}
 };
+
+

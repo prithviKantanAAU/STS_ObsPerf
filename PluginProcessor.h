@@ -84,6 +84,7 @@ public:
 
 		main_Mov.energyMeter->processInput(abs(sin(cyclesDone * 0.004)));
 		fUI->setParamValue("energy", abs(sin(cyclesDone*0.004)));		
+		//fUI->setParamValue("energy", main_Mov.energyCompute.CoM_Speed);		
 		fUI->setParamValue("MasterGain", main_Mov.masterGain_dB);
 	}
 
