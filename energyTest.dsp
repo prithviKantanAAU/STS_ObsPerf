@@ -4,14 +4,15 @@ energy = hslider("energy",0,0,1,0.001) : si.smoo;
 
 f_Hz = 220 + energy * RANGE_f_Hz;
 gain = 0.5 + sqrt(energy) * RANGE_gain;
-breathGain = energy * RANGE_breathGain;
+breathGain = energy * RANGE_drive;
 drive = energy * RANGE_drive;
 overblow = 0.5 + energy * RANGE_gain * RANGE_gain * 2;
+subAmp = energy * RANGE_subAmp;
   
 RANGE_f_Hz = hslider("SUBPARAM_freq_Hz",440,0,1200,0.01) : si.smoo;
 RANGE_gain = hslider("SUBPARAM_blowPressure",0.5,0,0.5,0.001) : si.smoo;
-RANGE_breathGain = hslider("SUBPARAM_breathgain",100,0,100,0.001) : si.smoo;
 RANGE_drive = hslider("SUBPARAM_drive",0.25,0,0.5,0.001) : si.smoo;
+RANGE_subAmp = hslider("SUBPARAM_subAmp",0.0,0,2,0.001) : si.smoo;
 masterGain_dB = hslider("MasterGain",0.0,-40,0,0.001) : si.smoo : ba.db2linear;
 
 //setTempo = hslider("tempo",500,400,1000,0.001);
@@ -37,5 +38,5 @@ with{
 
 trig = ba.pulse(ma.SR/setTempo * 60);
 
-process = (fluteSimple(f_Hz,gain,overblow,vib) + breathGain * fluteSimple(f_Hz,0.5,0.5,0)) : ef.cubicnl(drive,0) * masterGain_dB <: _,_;
+process = (fluteSimple(f_Hz,gain,overblow,vib) + breathGain * fluteSimple(f_Hz,0.5,0.5,0)),os.triangle(f_Hz/4) * subAmp :> ef.cubicnl(drive,0) * masterGain_dB <: _,_;
 			

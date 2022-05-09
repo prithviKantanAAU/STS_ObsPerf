@@ -79,7 +79,7 @@ public:
 	{
 		fUI->setParamValue("SUBPARAM_blowPressure", *main_Mov.mappingSliders.at(0).mapVal);
 		fUI->setParamValue("SUBPARAM_freq_Hz", *main_Mov.mappingSliders.at(1).mapVal);
-		fUI->setParamValue("SUBPARAM_breathgain", *main_Mov.mappingSliders.at(2).mapVal);
+		fUI->setParamValue("SUBPARAM_subAmp", *main_Mov.mappingSliders.at(2).mapVal);
 		fUI->setParamValue("SUBPARAM_drive", *main_Mov.mappingSliders.at(3).mapVal);
 
 		main_Mov.energyMeter->processInput(abs(sin(cyclesDone * 0.004)));

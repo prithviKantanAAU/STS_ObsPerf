@@ -73,7 +73,7 @@ public:
 		mappingSliders.push_back(*sliderPtr);
 		sliderPtr = new MappingSlider("Control 2", 0, 1200);
 		mappingSliders.push_back(*sliderPtr);
-		sliderPtr = new MappingSlider("Control 3", 0, 100);
+		sliderPtr = new MappingSlider("Control 3", 0, 2);
 		mappingSliders.push_back(*sliderPtr);
 		sliderPtr = new MappingSlider("Control 4", 0, 0.5);
 		mappingSliders.push_back(*sliderPtr);
