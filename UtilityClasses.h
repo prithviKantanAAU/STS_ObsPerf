@@ -445,6 +445,7 @@ public:
 	TextButton* record, * load, * unload, * playPause, * rwd, * fwd;
 	ProgressBar progBar;
 	TextEditor* smpl_Idx_Strt, *smpl_Idx_End;
+	String videoURL = "";
 	double progress_Val = 0;
 
 	short numCol = 6;
@@ -532,8 +533,13 @@ public:
 				fileIdx = 2;
 			if (iter.getFullPathName().contains("Shank"))
 				fileIdx = 3;
+			if (iter.getFullPathName().contains("Motion Video"))
+			{
+				fileIdx = 4;
+				videoURL = iter.getFullPathName();
+			}
 
-			if (imuLogStream.openedOk())
+			if (imuLogStream.openedOk() && fileIdx != 4)
 			{
 				logFound[fileIdx - 1] = true;;
 				success = true;

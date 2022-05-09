@@ -20,6 +20,11 @@ public:
 
 	// Sensor Objects
 	std::vector <IMU_Sensor> sensors;
+	bool toLoad_Video = false;
+	bool toPlay_Video = false;
+	bool toPause_Video = false;
+	bool toStop_Video = false;
+	bool toUnload_Video = false;
 
 	// WAV WRITING
 	std::unique_ptr<juce::FileOutputStream> outStream;
@@ -223,6 +228,10 @@ public:
 		stringPtr = new String("\\Raw IMU Data - " + sensorPtr->location + ".csv");
 		logHandle->addExtension(stringPtr);
 
+		// Do the same for video file
+		stringPtr = new String("\\Motion Video.mov");
+		logHandle->addExtension(stringPtr);
+
 		is_SensorsInitialized = true;
 	}
 
@@ -292,6 +301,7 @@ public:
 				{
 					logHandle->mode = 2;
 					logHandle->setVisible(true);
+					toLoad_Video = true;
 				}
 				load_sensorOffsets(logHandle->offsetsVector);
 			}
@@ -302,6 +312,7 @@ public:
 		logHandle->unload->setButtonText("Unload Log");
 		logHandle->unload->onClick = [this]
 		{
+			toUnload_Video = true;
 			logHandle->flushAllVectors();
 			logHandle->mode = 1;
 			logHandle->setVisible(true);
@@ -315,6 +326,7 @@ public:
 			// CONFIGURE BEHAVIOR !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 			if (logHandle->mode == 2)
 			{
+				toPlay_Video = true;
 				logHandle->mode = 3;
 				logHandle->playPause->setColour(logHandle->playPause->buttonColourId, Colours::red);
 				logHandle->playPause->setButtonText("Pause Log");
@@ -323,6 +335,7 @@ public:
 
 			else if (logHandle->mode == 3)
 			{
+				toPause_Video = true;
 				logHandle->mode = 2;
 				logHandle->playPause->setColour(logHandle->playPause->buttonColourId, Colours::blue);
 				logHandle->playPause->setButtonText("Play Log");

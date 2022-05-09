@@ -91,6 +91,7 @@ public:
 
 		// CREATE VIDEO COMPONENT
 		movVideoPlayer = new VideoComponent(true);
+		movVideoPlayer->setAudioVolume(0.0);
 
 		// METERS
 		energyMeter = new Norm_Denorm_Metering("Energy", 1, 0, 1);
@@ -129,8 +130,6 @@ public:
 	{
 		calcMovParams(sensObj);
 		updateVisualizerData(sensObj);
-		//handleOscillatorUpdate();
-		// MP LOGGING
 		handleLogging(isSensor_Recording,mpLogFile);
 	}
 
@@ -183,9 +182,62 @@ public:
 		for (MappingSlider& iter : mappingSliders)			iter.setVisible(on);
 ;	}
 
+	void handleVideoPlayback(Main_Sensors* sensObj)
+	{
+		if (sensObj->toLoad_Video)
+		{
+			auto result = movVideoPlayer->load(File(sensObj->logHandle->videoURL));
+			sensObj->toLoad_Video = false;
+		}
+
+		if (sensObj->toPlay_Video)
+		{
+			if (movVideoPlayer->isVideoOpen())
+			{
+				movVideoPlayer->play();
+				sensObj->toPlay_Video = false;
+			}
+		}
+
+		if (sensObj->toPause_Video)
+		{
+			if (movVideoPlayer->isVideoOpen())
+			{
+				movVideoPlayer->stop();
+				sensObj->toPause_Video = false;
+			}
+		}
+
+		if (sensObj->toStop_Video)
+		{
+			if (movVideoPlayer->isVideoOpen())
+			{
+				movVideoPlayer->stop();
+				sensObj->toStop_Video = false;
+			}
+		}
+
+
+		if (sensObj->toUnload_Video)
+		{
+			if (movVideoPlayer->isVideoOpen())
+			{
+				movVideoPlayer->closeVideo();
+				sensObj->toUnload_Video = false;
+			}
+		}
+
+		if (!movVideoPlayer->isPlaying() && (sensObj->logHandle->mode == sensObj->logHandle->FILE_LOADED))
+		{
+			sensObj->logHandle->playPause->triggerClick();
+			sensObj->logHandle->numSmpl_NOW = 0;			
+		}
+	}
+
 	void updateElements(Main_Sensors* sensObj)
 	{
 		handleExternalController();
+		handleVideoPlayback(sensObj);
 
 		// PUT FIRST TIME FUNCTIONS HERE
 		if (!is_First_Callback_Complete)
@@ -210,7 +262,7 @@ public:
 		VideoControl->getBoundingRec(wd, ht, 0.6, 0.08, 0.33, 0.6);
 		MasterControl->getBoundingRec(wd, ht, 0.6, 0.73, 0.33, 0.09);
 
-		VideoControl->memberComponent_setBounds(movVideoPlayer, 0.05, 0.05, 0.9, 0.75);
+		VideoControl->memberComponent_setBounds(movVideoPlayer, 0.05, 0.05, 0.9, 0.9);
 
 		energyMeter->setLayout(EnergyVis, 0, 0.25, 1, 0.9);
 		masterLevel->setLayout(MasterControl, 0.5, 0.25, 0.45, 0.9);
