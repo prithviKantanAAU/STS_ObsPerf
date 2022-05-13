@@ -81,6 +81,8 @@ public:
 		fUI->setParamValue("SUBPARAM_freq_Hz", *main_Mov.mappingSliders.at(1).mapVal);
 		fUI->setParamValue("SUBPARAM_subAmp", *main_Mov.mappingSliders.at(2).mapVal);
 		fUI->setParamValue("SUBPARAM_drive", *main_Mov.mappingSliders.at(3).mapVal);
+		fUI->setParamValue("T_Bell", main_Sens.logHandle->toPlay_Bell ? 0.7 : 0);
+		if (main_Sens.logHandle->toPlay_Bell) main_Sens.logHandle->toPlay_Bell = false;
 
 		main_Mov.energyMeter->processInput(abs(sin(cyclesDone * 0.004)));
 		fUI->setParamValue("energy", abs(sin(cyclesDone*0.004)));		

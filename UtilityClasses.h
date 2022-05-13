@@ -447,6 +447,7 @@ public:
 	TextEditor* smpl_Idx_Strt, *smpl_Idx_End;
 	String videoURL = "";
 	double progress_Val = 0;
+	bool toPlay_Bell = false;
 
 	short numCol = 6;
 	long numSmpl_TOT = 100000000;

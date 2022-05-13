@@ -245,6 +245,7 @@ public:
 			if (!is_SensorRecording)
 			{
 				// GENERATE PATH AND DIRECTORY FOR LOG STORAGE
+				logHandle->toPlay_Bell = true;
 				String rec_LogPath = File::getSpecialLocation(File::currentApplicationFile).getFullPathName();
 				rec_LogPath = rec_LogPath.upToLastOccurrenceOf("\\", true, false);
 				rec_LogPath += "MP Log - " + getCurrentTime() + "\\";
