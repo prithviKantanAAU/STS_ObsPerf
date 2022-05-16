@@ -332,6 +332,19 @@ public:
 		SET_Madgwick_Beta->setVisible(on);
 	}
 
+	float getAngVel_AP()
+	{
+		switch (*isFront_Side)
+		{
+		case 1:
+			return abs(oscObj->gyr_Buf[0]);
+			break;
+		case 2:
+			return abs(oscObj->gyr_Buf[1]);
+			break;
+		}
+	}
+
 	void rec_InitFile(String path)
 	{
 		path = path + "Raw IMU Data - " + location + ".csv";

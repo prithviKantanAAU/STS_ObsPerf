@@ -129,6 +129,7 @@ public:
 	void callback(Main_Sensors *sensObj, bool isSensor_Recording, FILE* mpLogFile)
 	{
 		calcMovParams(sensObj);
+		energyCompute.getEnergyVal();
 		updateVisualizerData(sensObj);
 		handleLogging(isSensor_Recording,mpLogFile);
 	}
@@ -178,6 +179,11 @@ public:
 		comDisplay->CoM_H->setVisible(on);
 		comDisplay->CoM_V->setVisible(on);
 		comDisplay->CoM_Speed->setVisible(on);
+
+		// MISC
+		energyCompute.energyVar_Choose->setVisible(on);
+		energyCompute.energyVar_Gain->setVisible(on);
+		energyCompute.energyVar_Gain_LAB->setVisible(on);
 
 		for (MappingSlider& iter : mappingSliders)			iter.setVisible(on);
 ;	}
@@ -272,6 +278,9 @@ public:
 		CoM_Vis->memberComponent_setBounds(comDisplay->CoM_V, 0.05, 0.33, 0.9, 0.33);
 		CoM_Vis->memberComponent_setBounds(comDisplay->CoM_Speed, 0.05, 0.66, 0.9, 0.33);
 
+		MiscControl->memberComponent_setBounds(energyCompute.energyVar_Choose, 0.05, 0.3, 0.4, 0.4);
+		MiscControl->memberComponent_setBounds(energyCompute.energyVar_Gain, 0.55, 0.45, 0.4, 0.1);
+
 		int numMappingSliders = mappingSliders.size();
 		float gap_Sliders_Horiz = 0.9 / (float)numMappingSliders;
 		int i = 0;
@@ -318,7 +327,12 @@ public:
 		float pitch_Thigh = *sensObj->sensors.at(1).ang_Pitch;
 		float pitch_Shank = *sensObj->sensors.at(2).ang_Pitch;
 
+		float angVel_Trunk = sensObj->sensors.at(0).getAngVel_AP();
+		float angVel_Thigh = sensObj->sensors.at(1).getAngVel_AP();
+		float angVel_Shank = sensObj->sensors.at(2).getAngVel_AP();
+
 		energyCompute.calcCoMCoordinates(pitch_Trunk, pitch_Thigh, pitch_Shank);
+		energyCompute.getAvg_AngVel(angVel_Trunk,angVel_Thigh,angVel_Shank);
 
 		setValue_MovFeature("CoM_Coord_H", energyCompute.CoM_Coord_H);
 		setValue_MovFeature("CoM_Coord_V", energyCompute.CoM_Coord_V);

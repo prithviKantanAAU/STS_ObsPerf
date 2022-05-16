@@ -84,9 +84,10 @@ public:
 		fUI->setParamValue("T_Bell", main_Sens.logHandle->toPlay_Bell ? 0.7 : 0);
 		if (main_Sens.logHandle->toPlay_Bell) main_Sens.logHandle->toPlay_Bell = false;
 
-		main_Mov.energyMeter->processInput(abs(sin(cyclesDone * 0.004)));
-		fUI->setParamValue("energy", abs(sin(cyclesDone*0.004)));		
-		//fUI->setParamValue("energy", main_Mov.energyCompute.CoM_Speed);		
+		//main_Mov.energyMeter->processInput(abs(sin(cyclesDone * 0.004)));
+		//fUI->setParamValue("energy", abs(sin(cyclesDone*0.004)));
+		main_Mov.energyMeter->processInput(main_Mov.energyCompute.energyVal);
+		fUI->setParamValue("energy", main_Mov.energyCompute.energyVal);		
 		fUI->setParamValue("MasterGain", main_Mov.masterGain_dB);
 	}
 

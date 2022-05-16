@@ -646,8 +646,6 @@ public:
 	}
 };
 
-
-
 class Differentiator
 {
 public:
@@ -1321,13 +1319,40 @@ public:
 	}
 };
 
-class EnergyCompute
+class EnergyCompute : ComboBox::Listener
 {
 public:
 	EnergyCompute()
 	{
-		smoothe_CoM_Speed.flushDelays();
-		smoothe_CoM_Speed.calculateLPFCoeffs(5, 0.7, 100);
+		smoothe_energyVar.flushDelays();
+		smoothe_energyVar.calculateLPFCoeffs(5, 0.7, 100);
+
+		energyVars.push_back("CoM Speed");
+		energyVars.push_back("Avgd Seg AngVel");
+
+		energyVar_Gain = new Slider;
+		energyVar_Gain->setRange(0, 10);
+		energyVar_Gain->setSkewFactor(0.5);
+		energyVar_Gain->setValue(1);
+		energyVar_Gain->setColour(energyVar_Gain->trackColourId, Colours::yellow);
+		energyVar_Gain->setColour(energyVar_Gain->backgroundColourId, Colours::blue);
+		energyVar_Gain->setTextBoxStyle(Slider::NoTextBox, true, 0, 0);
+		energyVar_Gain->onValueChange = [this]
+		{
+			energyVar_GainVal = energyVar_Gain->getValue();
+		};
+		
+		energyVar_Gain_LAB = new Label("", "Energy Gain");
+		energyVar_Gain_LAB->attachToComponent(energyVar_Gain, false);
+		
+		energyVar_Choose = new ComboBox;
+		energyVar_Choose->addListener(this);
+
+		for (int i = 0; i < energyVars.size(); i++)
+		{
+			energyVar_Choose->addItem(energyVars.at(i), i + 1);
+		}
+		energyVar_Choose->setSelectedId(1);
 	}
 
 	~EnergyCompute()
@@ -1335,10 +1360,27 @@ public:
 
 	}
 
-	BiQuad smoothe_CoM_Speed;
+	void comboBoxChanged(ComboBox* box)
+	{
+		if (box == energyVar_Choose)
+		{
+			energyVar_Idx = energyVar_Choose->getSelectedId() - 1;
+		}
+	}
+
+	BiQuad smoothe_energyVar;
 	float CoM_Coord_H = 0;
 	float CoM_Coord_V = 0;
 	float CoM_Speed = 0;
+	float avg_Seg_AngVel = 0;
+	float energyVal = 0;
+
+	std::vector<String> energyVars;
+	ComboBox* energyVar_Choose;
+	short energyVar_Idx = 0;
+	Slider* energyVar_Gain;
+	float energyVar_GainVal = 0;
+	Label* energyVar_Gain_LAB;
 
 	// Delay Variables
 	float CoM_H_Disp_z1 = 0;
@@ -1396,11 +1438,36 @@ public:
 		float CoM_V_Spd = fabs(CoM_Coord_V - CoM_V_Disp_z1) * 100;
 
 		CoM_Speed = sqrt(CoM_H_Spd * CoM_H_Spd + CoM_V_Spd * CoM_V_Spd);
-		CoM_Speed = smoothe_CoM_Speed.doBiQuad(CoM_Speed, 0);
-		CoM_Speed = jlimit(0.0, 1.0, (double)CoM_Speed);
+		//CoM_Speed = smoothe_energyVar.doBiQuad(CoM_Speed, 0);
+		//CoM_Speed = jlimit(0.0, 1.0, (double)CoM_Speed);
 
 		CoM_H_Disp_z1 = CoM_Coord_H;
 		CoM_V_Disp_z1 = CoM_Coord_V;
+	}
+
+	void getAvg_AngVel(float angVel_Trunk, float angVel_Thigh, float angVel_Shank)
+	{
+		float seg_wtFracs[3] = { 0.59, 0.29, 0.09 };
+		avg_Seg_AngVel = 0.01 * (seg_wtFracs[0] * abs(angVel_Trunk) + seg_wtFracs[1] * abs(angVel_Thigh) + seg_wtFracs[2] * abs(angVel_Shank));
+	}
+
+	void getEnergyVal()
+	{
+		float energy_Pre = 0;
+
+		switch (energyVar_Idx)
+		{
+		case 0: 
+			energy_Pre = CoM_Speed;
+			break;
+		case 1:
+			energy_Pre = avg_Seg_AngVel;
+			break;
+		}
+
+		energy_Pre *= energyVar_GainVal;
+		energy_Pre = smoothe_energyVar.doBiQuad(energy_Pre, 0);
+		energyVal = jlimit(0.0, 1.0, (double)pow(energy_Pre,2));
 	}
 };
 

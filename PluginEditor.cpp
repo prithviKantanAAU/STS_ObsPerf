@@ -148,6 +148,10 @@ void STS_ObsPerfAudioProcessorEditor::addAllElements_MOV()
     addAndMakeVisible(ptr_MOV->comDisplay->CoM_V);
     addAndMakeVisible(ptr_MOV->comDisplay->CoM_Speed);
 
+    addAndMakeVisible(ptr_MOV->energyCompute.energyVar_Choose);
+    addAndMakeVisible(ptr_MOV->energyCompute.energyVar_Gain);
+    addAndMakeVisible(ptr_MOV->energyCompute.energyVar_Gain_LAB);
+
     for (MappingSlider& iter : ptr_MOV->mappingSliders)
     {
         addAndMakeVisible(iter.sliderControl);
